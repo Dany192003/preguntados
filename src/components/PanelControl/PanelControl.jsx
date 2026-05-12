@@ -46,7 +46,7 @@ const PanelControl = () => {
   });
 
   useEffect(() => {
-    const newSocket = io('http://localhost:3001');
+    const newSocket = io('https://preguntados-backend-114y.onrender.com');
     setSocket(newSocket);
 
     newSocket.on('connect', () => {

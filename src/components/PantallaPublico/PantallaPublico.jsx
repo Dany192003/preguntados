@@ -19,7 +19,7 @@ const PantallaPublico = () => {
   });
 
   useEffect(() => {
-    const newSocket = io('http://localhost:3001');
+    const newSocket = io('https://preguntados-backend-114y.onrender.com');
     newSocket.emit('identificar', { tipo: 'publico', salaId });
 
     newSocket.on('estado-inicial', (estado) => {
