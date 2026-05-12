@@ -4,18 +4,25 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 
 const app = express();
-app.use(cors());
+
+// Configurar CORS para producción
+app.use(cors({
+  origin: process.env.FRONTEND_URL || '*',
+  methods: ["GET", "POST"],
+  credentials: true
+}));
 app.use(express.json());
 
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: "http://localhost:3000",
-    methods: ["GET", "POST"]
+    origin: process.env.FRONTEND_URL || '*',
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
-// Endpoint de salud para verificar servidor
+// Endpoint de salud
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: Date.now() });
 });
@@ -253,21 +260,18 @@ io.on('connection', (socket) => {
     }
   });
   
-  // ROBO CON EQUIPO ESPECÍFICO
   socket.on('intentar-robo-con-equipo', ({ salaId, equipoOrigen }) => {
     const sala = salas.get(salaId);
     if (sala) {
       const equipoDestino = equipoOrigen === 'equipo1' ? 'equipo2' : 'equipo1';
       const puntosARobar = sala.gameState.puntajes[equipoOrigen];
       
-      console.log(`💰 Robo en sala ${salaId}: de ${equipoOrigen} a ${equipoDestino} - ${puntosARobar} pts`);
-      
       if (puntosARobar > 0) {
         sala.gameState.puntajes[equipoOrigen] = 0;
         sala.gameState.puntajes[equipoDestino] += puntosARobar;
-        sala.gameState.mensajeJuego = `💰 ¡ROBO EXITOSO! ${puntosARobar} puntos transferidos de ${equipoOrigen === 'equipo1' ? sala.gameState.equipo1Nombre : sala.gameState.equipo2Nombre} a ${equipoDestino === 'equipo1' ? sala.gameState.equipo1Nombre : sala.gameState.equipo2Nombre}`;
+        sala.gameState.mensajeJuego = `💰 ¡ROBO EXITOSO! ${puntosARobar} puntos transferidos`;
       } else {
-        sala.gameState.mensajeJuego = `❌ ROBO FALLIDO! ${equipoOrigen === 'equipo1' ? sala.gameState.equipo1Nombre : sala.gameState.equipo2Nombre} no tiene puntos`;
+        sala.gameState.mensajeJuego = `❌ ROBO FALLIDO! No hay puntos para robar`;
       }
       
       sala.gameState.faseJuego = 'esperando';
@@ -320,7 +324,6 @@ io.on('connection', (socket) => {
     if (sala) {
       sala.gameState = crearEstadoInicial(salaId);
       io.to(salaId).emit('estado-actualizado', sala.gameState);
-      console.log(`🔄 Sala ${salaId}: Juego reiniciado`);
     }
   });
   
@@ -338,11 +341,10 @@ io.on('connection', (socket) => {
       const index = sala.clients.indexOf(socket.id);
       if (index !== -1) {
         sala.clients.splice(index, 1);
-        console.log(`👋 Cliente ${socket.id} salió de sala ${salaId} (${sala.clients.length} restantes)`);
       }
       if (sala.clients.length === 0) {
         salas.delete(salaId);
-        console.log(`🗑️ Sala ${salaId} eliminada (sin clientes)`);
+        console.log(`🗑️ Sala ${salaId} eliminada`);
       }
     }
   });
@@ -350,6 +352,5 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
-  console.log(`📋 Categorías predeterminadas: ${CATEGORIAS_PREDETERMINADAS.length}`);
+  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
 });
