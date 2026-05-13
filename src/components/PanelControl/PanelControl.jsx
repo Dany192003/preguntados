@@ -511,90 +511,92 @@ const PanelControl = () => {
       )}
 
       {/* MODAL AGREGAR CATEGORÍA - MEJORADO */}
-      {mostrarModalCategoria && (
-        <div className="modal-simple">
-          <div className="modal-content-simple">
-            <h3>➕ NUEVA CATEGORÍA PERSONALIZADA</h3>
-            
-            <div className="modal-section">
-              <h4>📛 Nombre de la categoría</h4>
-              <input 
-                type="text" 
-                placeholder="Ej: PELÍCULAS MEXICANAS"
-                value={nuevaCategoria.nombre}
-                onChange={(e) => setNuevaCategoria({...nuevaCategoria, nombre: e.target.value})}
-              />
-            </div>
-            
-            <div className="modal-section">
-              <h4>📋 Preguntas agregadas</h4>
-              <div className="preguntas-list">
-                {nuevaCategoria.preguntas.length === 0 ? (
-                  <div className="empty">No hay preguntas aún. Agrega tu primera pregunta 👇</div>
-                ) : (
-                  nuevaCategoria.preguntas.map((p, i) => (
-                    <div key={i} className="pregunta-preview">
-                      <div className="pregunta-info">
-                        <strong>{i + 1}.</strong> {p.texto}
-                      </div>
-                      <span className="pregunta-badge">{p.respuestas.length} respuestas</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-            
-            <div className="modal-section">
-              <h4>➕ Agregar nueva pregunta</h4>
-              <input 
-                type="text" 
-                placeholder="¿Cuál es la película mexicana más famosa?"
-                value={nuevaPregunta.texto}
-                onChange={(e) => setNuevaPregunta({...nuevaPregunta, texto: e.target.value})}
-              />
-              
-              <h5>📝 Respuestas de la encuesta (5 opciones)</h5>
-              <div className="respuestas-grupo">
-                {nuevaPregunta.respuestas.map((resp, idx) => (
-                  <div key={idx} className="respuesta-input-group">
-                    <span className="resp-num">{idx + 1}</span>
-                    <input 
-                      type="text" 
-                      placeholder={`Respuesta ${idx + 1}`}
-                      value={resp.texto}
-                      onChange={(e) => actualizarRespuesta(idx, 'texto', e.target.value)}
-                    />
-                    <input 
-                      type="number" 
-                      placeholder="%"
-                      value={resp.puntos || ''}
-                      onChange={(e) => actualizarRespuesta(idx, 'puntos', e.target.value)}
-                    />
+{mostrarModalCategoria && (
+  <div className="modal-simple">
+    <div className="modal-content-simple">
+      <h3>➕ NUEVA CATEGORÍA PERSONALIZADA</h3>
+      
+      <div className="modal-body">
+        <div className="modal-section">
+          <h4>📛 Nombre de la categoría</h4>
+          <input 
+            type="text" 
+            placeholder="Ej: PELÍCULAS MEXICANAS"
+            value={nuevaCategoria.nombre}
+            onChange={(e) => setNuevaCategoria({...nuevaCategoria, nombre: e.target.value})}
+          />
+        </div>
+        
+        <div className="modal-section">
+          <h4>📋 Preguntas agregadas</h4>
+          <div className="preguntas-list">
+            {nuevaCategoria.preguntas.length === 0 ? (
+              <div className="empty">No hay preguntas aún. Agrega tu primera pregunta 👇</div>
+            ) : (
+              nuevaCategoria.preguntas.map((p, i) => (
+                <div key={i} className="pregunta-preview">
+                  <div className="pregunta-info">
+                    <strong>{i + 1}.</strong> {p.texto}
                   </div>
-                ))}
-              </div>
-              
-              <button 
-                className="btn-agregar-pregunta" 
-                onClick={agregarPregunta}
-                disabled={!isPreguntaCompleta()}
-                style={{ opacity: !isPreguntaCompleta() ? 0.5 : 1 }}
-              >
-                ➕ Agregar esta pregunta
-              </button>
-            </div>
-            
-            <div className="modal-botones">
-              <button className="guardar" onClick={guardarCategoria}>
-                💾 Guardar Categoría
-              </button>
-              <button className="cancelar" onClick={() => setMostrarModalCategoria(false)}>
-                ❌ Cancelar
-              </button>
-            </div>
+                  <span className="pregunta-badge">{p.respuestas.length} respuestas</span>
+                </div>
+              ))
+            )}
           </div>
         </div>
-      )}
+        
+        <div className="modal-section">
+          <h4>➕ Agregar nueva pregunta</h4>
+          <input 
+            type="text" 
+            placeholder="¿Cuál es la película mexicana más famosa?"
+            value={nuevaPregunta.texto}
+            onChange={(e) => setNuevaPregunta({...nuevaPregunta, texto: e.target.value})}
+          />
+          
+          <h5>📝 Respuestas de la encuesta (5 opciones)</h5>
+          <div className="respuestas-grupo">
+            {nuevaPregunta.respuestas.map((resp, idx) => (
+              <div key={idx} className="respuesta-input-group">
+                <span className="resp-num">{idx + 1}</span>
+                <input 
+                  type="text" 
+                  placeholder={`Respuesta ${idx + 1}`}
+                  value={resp.texto}
+                  onChange={(e) => actualizarRespuesta(idx, 'texto', e.target.value)}
+                />
+                <input 
+                  type="number" 
+                  placeholder="%"
+                  value={resp.puntos || ''}
+                  onChange={(e) => actualizarRespuesta(idx, 'puntos', e.target.value)}
+                />
+              </div>
+            ))}
+          </div>
+          
+          <button 
+            className="btn-agregar-pregunta" 
+            onClick={agregarPregunta}
+            disabled={!isPreguntaCompleta()}
+            style={{ opacity: !isPreguntaCompleta() ? 0.5 : 1 }}
+          >
+            ➕ Agregar esta pregunta
+          </button>
+        </div>
+      </div>
+      
+      <div className="modal-botones">
+        <button className="guardar" onClick={guardarCategoria}>
+          💾 Guardar Categoría
+        </button>
+        <button className="cancelar" onClick={() => setMostrarModalCategoria(false)}>
+          ❌ Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };
