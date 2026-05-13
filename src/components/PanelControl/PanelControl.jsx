@@ -516,7 +516,7 @@ const PanelControl = () => {
     <div className="modal-content-simple">
       <h3>➕ NUEVA CATEGORÍA PERSONALIZADA</h3>
       
-      <div className="modal-body">
+      <div className="modal-scroll-area">
         <div className="modal-section">
           <h4>📛 Nombre de la categoría</h4>
           <input 
