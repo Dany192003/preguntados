@@ -31,7 +31,7 @@ function Inicio() {
       <div className="inicio-card">
         <div className="logo-principal">
           <span className="logo-icon">🎤</span>
-          <h1>LOS LATINOS DIJERON</h1>
+          <h1>PREGUNTADOS</h1>
           <p>El juego de las respuestas más populares</p>
         </div>
         
