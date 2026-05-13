@@ -41,8 +41,8 @@ const PantallaPublico = () => {
       <div className="tv-header">
         <div className="programa-logo">
           <span className="logo-icon">🎤</span>
-          <span className="logo-title">LOS LATINOS</span>
-          <span className="logo-subtitle">DIJERON</span>
+          <span className="logo-title">PREGUNTADOS</span>
+          <span className="logo-subtitle">G</span>
         </div>
         <div className="ronda-info">
           <span className="ronda-number">RONDA {gameState.ronda}</span>

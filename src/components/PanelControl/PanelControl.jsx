@@ -33,7 +33,11 @@ const PanelControl = () => {
   const [equipoSeleccionadoRobo, setEquipoSeleccionadoRobo] = useState(null);
   const [mostrarConfirmacionCerrarSala, setMostrarConfirmacionCerrarSala] = useState(false);
   
-  const [nuevaCategoria, setNuevaCategoria] = useState({ nombre: '', preguntas: [] });
+  const [nuevaCategoria, setNuevaCategoria] = useState({ 
+    nombre: '', 
+    preguntas: [] 
+  });
+  
   const [nuevaPregunta, setNuevaPregunta] = useState({
     texto: '',
     respuestas: [
@@ -188,6 +192,12 @@ const PanelControl = () => {
     setMostrarConfirmacionReinicio(false);
   };
 
+  // Validar si la pregunta está completa
+  const isPreguntaCompleta = () => {
+    const respuestasValidas = nuevaPregunta.respuestas.filter(r => r.texto.trim() !== '' && r.puntos > 0);
+    return nuevaPregunta.texto.trim() !== '' && respuestasValidas.length >= 3;
+  };
+
   const agregarPregunta = () => {
     const respuestasValidas = nuevaPregunta.respuestas.filter(r => r.texto.trim() !== '' && r.puntos > 0);
     if (nuevaPregunta.texto.trim() === '') {
@@ -255,7 +265,7 @@ const PanelControl = () => {
       <div className="panel-controlador">
         <div className="conectando">
           <h2>🔌 Conectando al servidor...</h2>
-          <p>Asegúrate que el servidor esté corriendo en http://localhost:3001</p>
+          <p>Asegúrate que el servidor esté corriendo</p>
         </div>
       </div>
     );
@@ -279,7 +289,7 @@ const PanelControl = () => {
 
       <div className="info-sala-presentador">
         <p>📺 Comparte este código con el público: <strong>{salaId}</strong></p>
-        <p>🌐 URL pública: <code>http://localhost:3000/publico/{salaId}</code></p>
+        <p>🌐 URL pública: <code>https://preguntados.vercel.app/publico/{salaId}</code></p>
       </div>
 
       <div className="editar-equipos">
@@ -383,7 +393,7 @@ const PanelControl = () => {
 
       {!juegoActivo && categoriaSeleccionada && (
         <button className="btn-iniciar-grande" onClick={iniciarJuego}>
-          🟢 INICIAR PARTIDA
+          🟢 INICIAR PARTIDA CON {categoriaSeleccionada.nombre}
         </button>
       )}
 
@@ -441,7 +451,7 @@ const PanelControl = () => {
         </>
       )}
 
-      {/* MODALES */}
+      {/* MODAL ROBO */}
       {mostrarModalRobo && (
         <div className="modal-confirmacion">
           <div className="modal-confirmacion-content">
@@ -472,6 +482,7 @@ const PanelControl = () => {
         </div>
       )}
 
+      {/* MODAL REINICIAR */}
       {mostrarConfirmacionReinicio && (
         <div className="modal-confirmacion">
           <div className="modal-confirmacion-content">
@@ -485,6 +496,7 @@ const PanelControl = () => {
         </div>
       )}
 
+      {/* MODAL CERRAR SALA */}
       {mostrarConfirmacionCerrarSala && (
         <div className="modal-confirmacion">
           <div className="modal-confirmacion-content">
@@ -498,22 +510,88 @@ const PanelControl = () => {
         </div>
       )}
 
+      {/* MODAL AGREGAR CATEGORÍA - MEJORADO */}
       {mostrarModalCategoria && (
         <div className="modal-simple">
           <div className="modal-content-simple">
-            <h3>➕ NUEVA CATEGORÍA (Solo para esta sala)</h3>
-            <input type="text" placeholder="Nombre de la categoría" value={nuevaCategoria.nombre} onChange={(e) => setNuevaCategoria({...nuevaCategoria, nombre: e.target.value})}/>
-            <h4>Preguntas agregadas:</h4>
-            <div className="preguntas-list">
-              {nuevaCategoria.preguntas.length === 0 ? <p className="empty">No hay preguntas aún</p> : nuevaCategoria.preguntas.map((p, i) => (<div key={i} className="pregunta-preview"><strong>{i + 1}.</strong> {p.texto}</div>))}
+            <h3>➕ NUEVA CATEGORÍA PERSONALIZADA</h3>
+            
+            <div className="modal-section">
+              <h4>📛 Nombre de la categoría</h4>
+              <input 
+                type="text" 
+                placeholder="Ej: PELÍCULAS MEXICANAS"
+                value={nuevaCategoria.nombre}
+                onChange={(e) => setNuevaCategoria({...nuevaCategoria, nombre: e.target.value})}
+              />
             </div>
-            <hr />
-            <h4>Agregar nueva pregunta:</h4>
-            <input type="text" placeholder="Texto de la pregunta" value={nuevaPregunta.texto} onChange={(e) => setNuevaPregunta({...nuevaPregunta, texto: e.target.value})}/>
-            <h5>Respuestas:</h5>
-            {nuevaPregunta.respuestas.map((resp, idx) => (<div key={idx} className="respuesta-input-group"><span className="resp-num">{idx + 1}</span><input type="text" placeholder={`Respuesta ${idx + 1}`} value={resp.texto} onChange={(e) => actualizarRespuesta(idx, 'texto', e.target.value)}/><input type="number" placeholder="Puntos" value={resp.puntos || ''} onChange={(e) => actualizarRespuesta(idx, 'puntos', e.target.value)}/></div>))}
-            <button className="btn-agregar-pregunta" onClick={agregarPregunta}>+ Agregar pregunta</button>
-            <div className="modal-botones"><button className="guardar" onClick={guardarCategoria}>Guardar</button><button className="cancelar" onClick={() => setMostrarModalCategoria(false)}>Cancelar</button></div>
+            
+            <div className="modal-section">
+              <h4>📋 Preguntas agregadas</h4>
+              <div className="preguntas-list">
+                {nuevaCategoria.preguntas.length === 0 ? (
+                  <div className="empty">No hay preguntas aún. Agrega tu primera pregunta 👇</div>
+                ) : (
+                  nuevaCategoria.preguntas.map((p, i) => (
+                    <div key={i} className="pregunta-preview">
+                      <div className="pregunta-info">
+                        <strong>{i + 1}.</strong> {p.texto}
+                      </div>
+                      <span className="pregunta-badge">{p.respuestas.length} respuestas</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+            
+            <div className="modal-section">
+              <h4>➕ Agregar nueva pregunta</h4>
+              <input 
+                type="text" 
+                placeholder="¿Cuál es la película mexicana más famosa?"
+                value={nuevaPregunta.texto}
+                onChange={(e) => setNuevaPregunta({...nuevaPregunta, texto: e.target.value})}
+              />
+              
+              <h5>📝 Respuestas de la encuesta (5 opciones)</h5>
+              <div className="respuestas-grupo">
+                {nuevaPregunta.respuestas.map((resp, idx) => (
+                  <div key={idx} className="respuesta-input-group">
+                    <span className="resp-num">{idx + 1}</span>
+                    <input 
+                      type="text" 
+                      placeholder={`Respuesta ${idx + 1}`}
+                      value={resp.texto}
+                      onChange={(e) => actualizarRespuesta(idx, 'texto', e.target.value)}
+                    />
+                    <input 
+                      type="number" 
+                      placeholder="%"
+                      value={resp.puntos || ''}
+                      onChange={(e) => actualizarRespuesta(idx, 'puntos', e.target.value)}
+                    />
+                  </div>
+                ))}
+              </div>
+              
+              <button 
+                className="btn-agregar-pregunta" 
+                onClick={agregarPregunta}
+                disabled={!isPreguntaCompleta()}
+                style={{ opacity: !isPreguntaCompleta() ? 0.5 : 1 }}
+              >
+                ➕ Agregar esta pregunta
+              </button>
+            </div>
+            
+            <div className="modal-botones">
+              <button className="guardar" onClick={guardarCategoria}>
+                💾 Guardar Categoría
+              </button>
+              <button className="cancelar" onClick={() => setMostrarModalCategoria(false)}>
+                ❌ Cancelar
+              </button>
+            </div>
           </div>
         </div>
       )}
