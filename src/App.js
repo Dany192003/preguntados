@@ -147,7 +147,7 @@ function PantallaPublica() {
       <div className="programa-header">
         <div className="logo-programa">
           <span>🎤</span>
-          <h1>LOS LATINOS DIJERON</h1>
+          <h1>Las mamàs dijeron</h1>
         </div>
         <div className="sala-id">
           <span className="sala-label">SALA:</span>
