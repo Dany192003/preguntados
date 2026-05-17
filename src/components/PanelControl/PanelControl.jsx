@@ -27,7 +27,6 @@ const PanelControl = () => {
   });
   
   const [categoriasSeleccionadas, setCategoriasSeleccionadas] = useState([]);
-  const [preguntaIndex, setPreguntaIndex] = useState(0);
   const [mostrarModalCategoria, setMostrarModalCategoria] = useState(false);
   const [editandoEquipo, setEditandoEquipo] = useState(null);
   const [nombreTemp, setNombreTemp] = useState("");
@@ -74,7 +73,6 @@ const PanelControl = () => {
     };
   }, [salaId]);
 
-  // Seleccionar/Deseleccionar categoría
   const toggleCategoria = (categoriaId) => {
     if (categoriasSeleccionadas.includes(categoriaId)) {
       setCategoriasSeleccionadas(categoriasSeleccionadas.filter(id => id !== categoriaId));
@@ -83,7 +81,6 @@ const PanelControl = () => {
     }
   };
 
-  // Iniciar juego con categorías seleccionadas
   const iniciarJuego = () => {
     if (categoriasSeleccionadas.length === 0) {
       alert('Selecciona al menos una categoría');
@@ -91,11 +88,13 @@ const PanelControl = () => {
     }
     
     if (socket) {
+      // Primero enviar las categorías seleccionadas
       socket.emit('seleccionar-categorias-ronda', { salaId, categoriasIds: categoriasSeleccionadas });
+      // Pequeño delay para asegurar que el servidor procese
       setTimeout(() => {
         socket.emit('iniciar-juego-ronda', salaId);
+        socket.emit('enviar-mensaje', { salaId, mensaje: `🎮 Juego iniciado con ${categoriasSeleccionadas.length} categorías` });
       }, 100);
-      socket.emit('enviar-mensaje', { salaId, mensaje: `🎮 Juego iniciado con ${categoriasSeleccionadas.length} categorías` });
     }
   };
 
@@ -353,7 +352,7 @@ const PanelControl = () => {
         </div>
       )}
 
-      {/* SELECCIÓN DE CATEGORÍAS MÚLTIPLES */}
+      {/* SELECCIÓN DE CATEGORÍAS - SOLO SI EL JUEGO NO HA INICIADO */}
       {!gameState.juegoIniciado && (
         <div className="seleccion-categoria-multiple">
           <h3>📂 SELECCIONA CATEGORÍAS PARA LA RONDA</h3>
@@ -387,16 +386,17 @@ const PanelControl = () => {
             className="btn-iniciar-grande" 
             onClick={iniciarJuego}
             disabled={categoriasSeleccionadas.length === 0}
+            style={{ opacity: categoriasSeleccionadas.length === 0 ? 0.5 : 1 }}
           >
             🟢 INICIAR RONDA ({categoriasSeleccionadas.length} categorías seleccionadas)
           </button>
         </div>
       )}
 
-      {/* JUEGO ACTIVO */}
+      {/* JUEGO ACTIVO - MOSTRAR SOLO CUANDO SE HA INICIADO */}
       {gameState.juegoIniciado && (
         <>
-          {/* Info de progreso de ronda */}
+          {/* Progreso de ronda */}
           <div className="progreso-ronda">
             <div className="categoria-actual-info">
               <span className="categoria-actual-tag">📚 Categoría actual:</span>
@@ -416,11 +416,13 @@ const PanelControl = () => {
             </div>
           </div>
 
+          {/* Pregunta actual */}
           <div className="pregunta-simple">
             <h3>📢 PREGUNTA</h3>
             <div className="texto-pregunta">{gameState.preguntaActual.texto}</div>
           </div>
 
+          {/* Mano a mano */}
           <div className="manoamazo-simple">
             <h3>🎯 MANO A MANO - ¿Quién empieza?</h3>
             <div className="manoamazo-botones">
@@ -433,6 +435,7 @@ const PanelControl = () => {
             </div>
           </div>
 
+          {/* Respuestas */}
           <div className="respuestas-simples">
             <h3>📋 RESPUESTAS</h3>
             {gameState.preguntaActual.respuestas && gameState.preguntaActual.respuestas.map((resp, idx) => (
@@ -454,6 +457,7 @@ const PanelControl = () => {
             ))}
           </div>
 
+          {/* Controles rápidos */}
           <div className="controles-rapidos">
             <button className="fallo-btn" onClick={registrarFallo}>
               ❌ FALLO
@@ -462,7 +466,7 @@ const PanelControl = () => {
               💰 ROBAR PUNTOS
             </button>
             <button className="siguiente-btn" onClick={siguientePregunta}>
-              ⏩ SIGUIENTE
+              ⏩ SIGUIENTE PREGUNTA / CATEGORÍA
             </button>
           </div>
         </>

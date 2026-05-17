@@ -176,9 +176,9 @@ function crearEstadoInicial(salaId) {
     mensajeJuego: "Bienvenidos al programa",
     ronda: 1,
     categorias: JSON.parse(JSON.stringify(CATEGORIAS_PREDETERMINADAS)),
-    // Nuevas propiedades para rondas múltiples
     categoriasSeleccionadasRonda: [],
     rondaActualCategoria: 0,
+    preguntaActualIndex: 0,
     categoriaActual: null,
     juegoIniciado: false
   };
@@ -231,6 +231,7 @@ io.on('connection', (socket) => {
       );
       sala.gameState.categoriasSeleccionadasRonda = categoriasSeleccionadas;
       sala.gameState.rondaActualCategoria = 0;
+      sala.gameState.preguntaActualIndex = 0;
       console.log(`📢 Sala ${salaId}: Categorías seleccionadas: ${categoriasSeleccionadas.map(c => c.nombre).join(', ')}`);
       io.to(salaId).emit('estado-actualizado', sala.gameState);
     }
@@ -243,36 +244,34 @@ io.on('connection', (socket) => {
       sala.gameState.juegoIniciado = true;
       sala.gameState.rondaActualCategoria = 0;
       sala.gameState.preguntaActualIndex = 0;
-      cargarPrimeraPregunta(sala, salaId);
+      
+      // Cargar primera categoría y primera pregunta
+      const primeraCategoria = sala.gameState.categoriasSeleccionadasRonda[0];
+      sala.gameState.categoriaActual = primeraCategoria;
+      
+      if (primeraCategoria.preguntas && primeraCategoria.preguntas.length > 0) {
+        const primeraPregunta = primeraCategoria.preguntas[0];
+        sala.gameState.preguntaActual = {
+          texto: primeraPregunta.texto,
+          respuestas: primeraPregunta.respuestas.map(r => ({
+            texto: r.texto,
+            puntos: r.puntos,
+            revelada: false,
+            acertada: false
+          }))
+        };
+        sala.gameState.mensajeJuego = `🎮 Ronda iniciada! Categoría 1: ${primeraCategoria.nombre}`;
+      }
+      
+      io.to(salaId).emit('estado-actualizado', sala.gameState);
+      console.log(`📢 Sala ${salaId}: Juego iniciado`);
     }
   });
   
-  function cargarPrimeraPregunta(sala, salaId) {
-    if (sala.gameState.categoriasSeleccionadasRonda.length === 0) return;
-    
-    const primeraCategoria = sala.gameState.categoriasSeleccionadasRonda[0];
-    sala.gameState.categoriaActual = primeraCategoria;
-    
-    if (primeraCategoria.preguntas && primeraCategoria.preguntas.length > 0) {
-      const primeraPregunta = primeraCategoria.preguntas[0];
-      sala.gameState.preguntaActual = {
-        texto: primeraPregunta.texto,
-        respuestas: primeraPregunta.respuestas.map(r => ({
-          texto: r.texto,
-          puntos: r.puntos,
-          revelada: false,
-          acertada: false
-        }))
-      };
-      sala.gameState.mensajeJuego = `🎮 Ronda iniciada con ${sala.gameState.categoriasSeleccionadasRonda.length} categorías. Categoría 1: ${primeraCategoria.nombre}`;
-      io.to(salaId).emit('estado-actualizado', sala.gameState);
-    }
-  }
-  
-  // SIGUIENTE PREGUNTA DENTRO DE LA MISMA CATEGORÍA
-  socket.on('siguiente-pregunta-categoria', ({ salaId }) => {
+  // SIGUIENTE PREGUNTA (dentro de la misma categoría)
+  socket.on('siguiente-pregunta-categoria', (salaId) => {
     const sala = salas.get(salaId);
-    if (sala && sala.gameState.categoriaActual) {
+    if (sala && sala.gameState.juegoIniciado && sala.gameState.categoriaActual) {
       const preguntas = sala.gameState.categoriaActual.preguntas;
       const indiceActual = sala.gameState.preguntaActualIndex || 0;
       
@@ -293,7 +292,7 @@ io.on('connection', (socket) => {
         sala.gameState.equipoActivo = null;
         sala.gameState.strikes = 0;
         sala.gameState.puntosEnJuego = 0;
-        sala.gameState.mensajeJuego = `📢 Nueva pregunta de la categoría ${sala.gameState.categoriaActual.nombre}`;
+        sala.gameState.mensajeJuego = `📢 Nueva pregunta de ${sala.gameState.categoriaActual.nombre}`;
         io.to(salaId).emit('estado-actualizado', sala.gameState);
       } else {
         // Cambiar a la siguiente categoría
@@ -305,10 +304,11 @@ io.on('connection', (socket) => {
   // SIGUIENTE CATEGORÍA
   socket.on('siguiente-categoria', (salaId) => {
     const sala = salas.get(salaId);
-    if (sala && sala.gameState.categoriasSeleccionadasRonda.length > 0) {
+    if (sala && sala.gameState.juegoIniciado && sala.gameState.categoriasSeleccionadasRonda.length > 0) {
       const nuevoIndice = sala.gameState.rondaActualCategoria + 1;
       
       if (nuevoIndice < sala.gameState.categoriasSeleccionadasRonda.length) {
+        // Cargar siguiente categoría
         sala.gameState.rondaActualCategoria = nuevoIndice;
         sala.gameState.categoriaActual = sala.gameState.categoriasSeleccionadasRonda[nuevoIndice];
         sala.gameState.preguntaActualIndex = 0;
@@ -332,7 +332,7 @@ io.on('connection', (socket) => {
       } else {
         // Terminar ronda
         sala.gameState.juegoIniciado = false;
-        sala.gameState.mensajeJuego = `🏆 ¡Ronda completada! Puntaje final: ${sala.gameState.equipo1Nombre}: ${sala.gameState.puntajes.equipo1} - ${sala.gameState.equipo2Nombre}: ${sala.gameState.puntajes.equipo2}`;
+        sala.gameState.mensajeJuego = `🏆 ¡RONDA COMPLETADA! Puntaje final - ${sala.gameState.equipo1Nombre}: ${sala.gameState.puntajes.equipo1} | ${sala.gameState.equipo2Nombre}: ${sala.gameState.puntajes.equipo2}`;
         sala.gameState.categoriasSeleccionadasRonda = [];
         sala.gameState.categoriaActual = null;
         io.to(salaId).emit('estado-actualizado', sala.gameState);
@@ -352,6 +352,7 @@ io.on('connection', (socket) => {
       };
       sala.gameState.categorias.push(nuevaCategoria);
       io.to(salaId).emit('estado-actualizado', sala.gameState);
+      console.log(`📌 Sala ${salaId}: Categoría personalizada agregada - ${categoria.nombre}`);
     }
   });
   
@@ -469,6 +470,7 @@ io.on('connection', (socket) => {
     if (sala) {
       sala.gameState = crearEstadoInicial(salaId);
       io.to(salaId).emit('estado-actualizado', sala.gameState);
+      console.log(`🔄 Sala ${salaId}: Juego reiniciado`);
     }
   });
   
@@ -493,6 +495,7 @@ io.on('connection', (socket) => {
         console.log(`🗑️ Sala ${salaId} eliminada`);
       }
     }
+    console.log('Cliente desconectado:', socket.id);
   });
 });
 
