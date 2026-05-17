@@ -42,7 +42,7 @@ const PantallaPublico = () => {
         <div className="programa-logo">
           <span className="logo-icon">🎤</span>
           <span className="logo-title">PREGUNTADOS</span>
-          <span className="logo-subtitle">G</span>
+          <span className="logo-subtitle">GT</span>
         </div>
         <div className="ronda-info">
           <span className="ronda-number">RONDA {gameState.ronda}</span>

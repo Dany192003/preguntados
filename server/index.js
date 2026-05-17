@@ -28,98 +28,140 @@ app.get('/health', (req, res) => {
 });
 
 // Categorías predeterminadas
+
+// Categorías predeterminadas - Edición Día de la Madre
 const CATEGORIAS_PREDETERMINADAS = [
   {
     id: 1,
-    nombre: "🎉 FIESTAS MEXICANAS",
+    nombre: "🍼 PARA CALMAR A UN BEBÉ",
     tipo: "default",
     preguntas: [
       {
-        texto: "¿Qué no puede faltar en una fiesta mexicana?",
+        texto: "¿Qué haces para que un bebé deje de llorar?",
         respuestas: [
-          { texto: "Tequila", puntos: 45 },
-          { texto: "Música", puntos: 25 },
-          { texto: "Comida", puntos: 18 },
-          { texto: "Familia", puntos: 7 },
-          { texto: "Piñata", puntos: 5 }
-        ]
-      },
-      {
-        texto: "¿Qué comida es típica en una fiesta?",
-        respuestas: [
-          { texto: "Tacos", puntos: 50 },
-          { texto: "Tamales", puntos: 20 },
-          { texto: "Pozole", puntos: 15 },
-          { texto: "Mole", puntos: 10 },
-          { texto: "Chiles", puntos: 5 }
+          { texto: "Darle leche", puntos: 45 },
+          { texto: "Cargarlo y mecerlo", puntos: 25 },
+          { texto: "Cantarle o ponerle música", puntos: 15 },
+          { texto: "Cambiarle el pañal", puntos: 10 },
+          { texto: "Salir a caminar con él", puntos: 5 }
         ]
       }
     ]
   },
   {
     id: 2,
-    nombre: "📺 PROGRAMAS DE TV",
+    nombre: "🗣️ FRASES TÍPICAS DE MAMÁ",
     tipo: "default",
     preguntas: [
       {
-        texto: "¿Programa de TV más visto en México?",
+        texto: "¿Qué frase típica dices como mamá?",
         respuestas: [
-          { texto: "La Rosa de Guadalupe", puntos: 50 },
-          { texto: "El Chavo", puntos: 25 },
-          { texto: "Hoy", puntos: 15 },
-          { texto: "Noticieros", puntos: 7 },
-          { texto: "Acapulco Shore", puntos: 3 }
+          { texto: "Porque lo digo yo y ya", puntos: 35 },
+          { texto: "No tengo favoritos, los quiero igual", puntos: 25 },
+          { texto: "Cuando tengas tus hijos vas a entender", puntos: 20 },
+          { texto: "Le voy a decir a tu papá", puntos: 12 },
+          { texto: "No te mandas solo", puntos: 8 }
         ]
       }
     ]
   },
   {
     id: 3,
-    nombre: "🍽️ COMIDA LATINA",
+    nombre: "🎁 REGALOS POPULARES PARA MAMÁ",
     tipo: "default",
     preguntas: [
       {
-        texto: "¿Comida latina más popular?",
+        texto: "¿Qué regalo le gusta más a una mamá?",
         respuestas: [
-          { texto: "Tacos", puntos: 45 },
-          { texto: "Arepas", puntos: 20 },
-          { texto: "Empanadas", puntos: 15 },
-          { texto: "Ceviche", puntos: 12 },
-          { texto: "Pupusas", puntos: 8 }
+          { texto: "Ropa o zapatos", puntos: 30 },
+          { texto: "Perfume o cremas", puntos: 25 },
+          { texto: "Una comida hecha por sus hijos", puntos: 20 },
+          { texto: "Flores", puntos: 15 },
+          { texto: "Una tarjeta hecha a mano", puntos: 10 }
         ]
       }
     ]
   },
   {
     id: 4,
-    nombre: "🎵 MÚSICA LATINA",
+    nombre: "👋 CON QUÉ PEGAS A TUS HIJOS",
     tipo: "default",
     preguntas: [
       {
-        texto: "¿Género musical más escuchado?",
+        texto: "¿Con qué le pegas a tus hijos?",
         respuestas: [
-          { texto: "Reggaetón", puntos: 45 },
-          { texto: "Banda", puntos: 25 },
-          { texto: "Salsa", puntos: 15 },
-          { texto: "Cumbia", puntos: 10 },
-          { texto: "Balada", puntos: 5 }
+          { texto: "La chancla", puntos: 50 },
+          { texto: "El cincho", puntos: 20 },
+          { texto: "La mano", puntos: 15 },
+          { texto: "Una rama", puntos: 10 },
+          { texto: "Una escoba", puntos: 5 }
         ]
       }
     ]
   },
   {
     id: 5,
-    nombre: "⚽ DEPORTES",
+    nombre: "🏫 RUTINA ANTES DE LA ESCUELA",
     tipo: "default",
     preguntas: [
       {
-        texto: "¿Deporte más popular en México?",
+        texto: "¿Qué haces con tus hijos antes de llevarlos a la escuela?",
         respuestas: [
-          { texto: "Fútbol", puntos: 70 },
-          { texto: "Boxeo", puntos: 15 },
-          { texto: "Béisbol", puntos: 8 },
-          { texto: "Lucha libre", puntos: 5 },
-          { texto: "Baloncesto", puntos: 2 }
+          { texto: "Despertarlos", puntos: 30 },
+          { texto: "Darles de desayunar", puntos: 25 },
+          { texto: "Buscar su uniforme", puntos: 20 },
+          { texto: "Peinarlos aunque no quieran", puntos: 15 },
+          { texto: "Revisar que lleven todo", puntos: 10 }
+        ]
+      }
+    ]
+  },
+  {
+    id: 6,
+    nombre: "☕ MARCAS DE CAFÉ",
+    tipo: "default",
+    preguntas: [
+      {
+        texto: "¿Qué café prefieres?",
+        respuestas: [
+          { texto: "Café Quetzal", puntos: 40 },
+          { texto: "Café Jarillita", puntos: 25 },
+          { texto: "Nescafé", puntos: 20 },
+          { texto: "Inscafé", puntos: 15 }
+        ]
+      }
+    ]
+  },
+  {
+    id: 7,
+    nombre: "🧹 QUÉ TE MOLESTA QUE NO HAGAN",
+    tipo: "default",
+    preguntas: [
+      {
+        texto: "¿Qué es lo que más te molesta que tus hijos NO hagan?",
+        respuestas: [
+          { texto: "Recoger su cuarto", puntos: 35 },
+          { texto: "Lavar sus propios trastes", puntos: 25 },
+          { texto: "Hacer la tarea", puntos: 20 },
+          { texto: "Bañarse sin que se lo digas", puntos: 12 },
+          { texto: "No dejar el teléfono", puntos: 8 }
+        ]
+      }
+    ]
+  },
+  {
+    id: 8,
+    nombre: "😅 MENTIRAS TÍPICAS DE HIJOS",
+    tipo: "default",
+    preguntas: [
+      {
+        texto: "¿Cuál es la mentira más común que te dicen tus hijos?",
+        respuestas: [
+          { texto: "Ya hice la tarea", puntos: 40 },
+          { texto: "No fui yo", puntos: 25 },
+          { texto: "Ya me bañé", puntos: 15 },
+          { texto: "Ya recogí mi cuarto", puntos: 12 },
+          { texto: "Me duele la panza para no ir a la escuela", puntos: 8 }
         ]
       }
     ]
