@@ -15,16 +15,19 @@ const PanelControl = () => {
     equipoActivo: null,
     puntajes: { equipo1: 0, equipo2: 0 },
     puntosEnJuego: 0,
-    preguntaActual: { texto: "Selecciona categoría y presiona INICIAR", respuestas: [] },
+    preguntaActual: { texto: "Selecciona categorías y presiona INICIAR", respuestas: [] },
     strikes: 0,
     mensajeJuego: "Bienvenido",
     ronda: 1,
-    categorias: []
+    categorias: [],
+    categoriasSeleccionadasRonda: [],
+    juegoIniciado: false,
+    categoriaActual: null,
+    rondaActualCategoria: 0
   });
   
-  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(null);
+  const [categoriasSeleccionadas, setCategoriasSeleccionadas] = useState([]);
   const [preguntaIndex, setPreguntaIndex] = useState(0);
-  const [juegoActivo, setJuegoActivo] = useState(false);
   const [mostrarModalCategoria, setMostrarModalCategoria] = useState(false);
   const [editandoEquipo, setEditandoEquipo] = useState(null);
   const [nombreTemp, setNombreTemp] = useState("");
@@ -33,11 +36,7 @@ const PanelControl = () => {
   const [equipoSeleccionadoRobo, setEquipoSeleccionadoRobo] = useState(null);
   const [mostrarConfirmacionCerrarSala, setMostrarConfirmacionCerrarSala] = useState(false);
   
-  const [nuevaCategoria, setNuevaCategoria] = useState({ 
-    nombre: '', 
-    preguntas: [] 
-  });
-  
+  const [nuevaCategoria, setNuevaCategoria] = useState({ nombre: '', preguntas: [] });
   const [nuevaPregunta, setNuevaPregunta] = useState({
     texto: '',
     respuestas: [
@@ -66,54 +65,43 @@ const PanelControl = () => {
       setGameState(estado);
     });
 
+    newSocket.on('siguiente-categoria', () => {
+      if (socket) socket.emit('siguiente-categoria', salaId);
+    });
+
     return () => {
       newSocket.disconnect();
     };
   }, [salaId]);
 
-  const iniciarJuego = () => {
-    if (!categoriaSeleccionada) {
-      alert('Selecciona una categoría');
-      return;
-    }
-    setJuegoActivo(true);
-    setPreguntaIndex(0);
-    cargarPregunta(0);
-    if (socket) {
-      socket.emit('enviar-mensaje', { salaId, mensaje: `🎮 Juego iniciado - ${categoriaSeleccionada.nombre}` });
+  // Seleccionar/Deseleccionar categoría
+  const toggleCategoria = (categoriaId) => {
+    if (categoriasSeleccionadas.includes(categoriaId)) {
+      setCategoriasSeleccionadas(categoriasSeleccionadas.filter(id => id !== categoriaId));
+    } else {
+      setCategoriasSeleccionadas([...categoriasSeleccionadas, categoriaId]);
     }
   };
 
-  const cargarPregunta = (index) => {
-    const pregunta = categoriaSeleccionada.preguntas[index];
-    if (socket && pregunta) {
-      socket.emit('siguiente-pregunta', {
-        salaId,
-        nuevaPregunta: {
-          texto: pregunta.texto,
-          respuestas: pregunta.respuestas.map(r => ({ 
-            texto: r.texto, 
-            puntos: r.puntos, 
-            revelada: false, 
-            acertada: false 
-          }))
-        }
-      });
+  // Iniciar juego con categorías seleccionadas
+  const iniciarJuego = () => {
+    if (categoriasSeleccionadas.length === 0) {
+      alert('Selecciona al menos una categoría');
+      return;
+    }
+    
+    if (socket) {
+      socket.emit('seleccionar-categorias-ronda', { salaId, categoriasIds: categoriasSeleccionadas });
+      setTimeout(() => {
+        socket.emit('iniciar-juego-ronda', salaId);
+      }, 100);
+      socket.emit('enviar-mensaje', { salaId, mensaje: `🎮 Juego iniciado con ${categoriasSeleccionadas.length} categorías` });
     }
   };
 
   const siguientePregunta = () => {
-    if (preguntaIndex + 1 < categoriaSeleccionada.preguntas.length) {
-      setPreguntaIndex(preguntaIndex + 1);
-      cargarPregunta(preguntaIndex + 1);
-      if (socket) {
-        socket.emit('cambiar-fase', { salaId, fase: 'manoAmazo' });
-        socket.emit('reset-strikes', salaId);
-      }
-    } else {
-      alert('🎉 ¡Categoría completada!');
-      setJuegoActivo(false);
-      setCategoriaSeleccionada(null);
+    if (socket) {
+      socket.emit('siguiente-pregunta-categoria', salaId);
     }
   };
 
@@ -186,13 +174,10 @@ const PanelControl = () => {
 
   const reiniciarPartida = () => {
     if (socket) socket.emit('reiniciar-juego', salaId);
-    setJuegoActivo(false);
-    setCategoriaSeleccionada(null);
-    setPreguntaIndex(0);
+    setCategoriasSeleccionadas([]);
     setMostrarConfirmacionReinicio(false);
   };
 
-  // Validar si la pregunta está completa
   const isPreguntaCompleta = () => {
     const respuestasValidas = nuevaPregunta.respuestas.filter(r => r.texto.trim() !== '' && r.puntos > 0);
     return nuevaPregunta.texto.trim() !== '' && respuestasValidas.length >= 3;
@@ -278,7 +263,7 @@ const PanelControl = () => {
         <div className="sala-info">
           <span className="sala-label">SALA:</span>
           <span className="sala-codigo">{salaId}</span>
-          <button className="btn-cerrar-sala" onClick={() => setMostrarConfirmacionCerrarSala(true)} title="Cerrar sala y desconectar a todos">
+          <button className="btn-cerrar-sala" onClick={() => setMostrarConfirmacionCerrarSala(true)}>
             🚪 Cerrar Sala
           </button>
         </div>
@@ -368,39 +353,71 @@ const PanelControl = () => {
         </div>
       )}
 
-      <div className="seleccion-categoria">
-        <h3>📂 SELECCIONAR CATEGORÍA</h3>
-        <div className="categorias-simples">
-          {gameState.categorias && gameState.categorias.length > 0 ? (
-            gameState.categorias.map(cat => (
-              <button
+      {/* SELECCIÓN DE CATEGORÍAS MÚLTIPLES */}
+      {!gameState.juegoIniciado && (
+        <div className="seleccion-categoria-multiple">
+          <h3>📂 SELECCIONA CATEGORÍAS PARA LA RONDA</h3>
+          <p className="info-multiple">Selecciona 1 o más categorías para jugar en esta ronda</p>
+          <div className="categorias-grid-multiple">
+            {gameState.categorias && gameState.categorias.map(cat => (
+              <div
                 key={cat.id}
-                className={`cat-btn ${categoriaSeleccionada?.id === cat.id ? 'active' : ''}`}
-                onClick={() => setCategoriaSeleccionada(cat)}
+                className={`categoria-card-multiple ${categoriasSeleccionadas.includes(cat.id) ? 'seleccionada' : ''}`}
+                onClick={() => toggleCategoria(cat.id)}
               >
-                {cat.nombre}
-                {cat.tipo === 'custom' && <span className="custom-badge"> 📌</span>}
-              </button>
-            ))
-          ) : (
-            <div className="no-categorias">Cargando categorías...</div>
-          )}
-          <button className="cat-btn agregar" onClick={() => setMostrarModalCategoria(true)}>
-            ➕ AGREGAR
+                <div className="categoria-checkbox">
+                  {categoriasSeleccionadas.includes(cat.id) ? '✅' : '⬜'}
+                </div>
+                <div className="categoria-info">
+                  <div className="categoria-nombre-multiple">{cat.nombre}</div>
+                  <div className="categoria-preguntas-count">{cat.preguntas.length} preguntas</div>
+                </div>
+              </div>
+            ))}
+            <div className="categoria-card-multiple agregar" onClick={() => setMostrarModalCategoria(true)}>
+              <div className="categoria-checkbox">➕</div>
+              <div className="categoria-info">
+                <div className="categoria-nombre-multiple">AGREGAR CATEGORÍA</div>
+                <div className="categoria-preguntas-count">Personalizada</div>
+              </div>
+            </div>
+          </div>
+          
+          <button 
+            className="btn-iniciar-grande" 
+            onClick={iniciarJuego}
+            disabled={categoriasSeleccionadas.length === 0}
+          >
+            🟢 INICIAR RONDA ({categoriasSeleccionadas.length} categorías seleccionadas)
           </button>
         </div>
-      </div>
-
-      {!juegoActivo && categoriaSeleccionada && (
-        <button className="btn-iniciar-grande" onClick={iniciarJuego}>
-          🟢 INICIAR PARTIDA CON {categoriaSeleccionada.nombre}
-        </button>
       )}
 
-      {juegoActivo && (
+      {/* JUEGO ACTIVO */}
+      {gameState.juegoIniciado && (
         <>
+          {/* Info de progreso de ronda */}
+          <div className="progreso-ronda">
+            <div className="categoria-actual-info">
+              <span className="categoria-actual-tag">📚 Categoría actual:</span>
+              <strong>{gameState.categoriaActual?.nombre || 'Cargando...'}</strong>
+            </div>
+            <div className="progreso-barras">
+              <div className="progreso-item">
+                <span>Progreso ronda:</span>
+                <div className="barra-progreso">
+                  <div 
+                    className="barra-fill" 
+                    style={{ width: `${((gameState.rondaActualCategoria + 1) / gameState.categoriasSeleccionadasRonda.length) * 100}%` }}
+                  ></div>
+                </div>
+                <span className="progreso-texto">{gameState.rondaActualCategoria + 1}/{gameState.categoriasSeleccionadasRonda.length} categorías</span>
+              </div>
+            </div>
+          </div>
+
           <div className="pregunta-simple">
-            <h3>📢 PREGUNTA {preguntaIndex + 1}/{categoriaSeleccionada?.preguntas.length}</h3>
+            <h3>📢 PREGUNTA</h3>
             <div className="texto-pregunta">{gameState.preguntaActual.texto}</div>
           </div>
 
@@ -451,7 +468,7 @@ const PanelControl = () => {
         </>
       )}
 
-      {/* MODAL ROBO */}
+      {/* MODALES */}
       {mostrarModalRobo && (
         <div className="modal-confirmacion">
           <div className="modal-confirmacion-content">
@@ -482,7 +499,6 @@ const PanelControl = () => {
         </div>
       )}
 
-      {/* MODAL REINICIAR */}
       {mostrarConfirmacionReinicio && (
         <div className="modal-confirmacion">
           <div className="modal-confirmacion-content">
@@ -496,7 +512,6 @@ const PanelControl = () => {
         </div>
       )}
 
-      {/* MODAL CERRAR SALA */}
       {mostrarConfirmacionCerrarSala && (
         <div className="modal-confirmacion">
           <div className="modal-confirmacion-content">
@@ -510,93 +525,93 @@ const PanelControl = () => {
         </div>
       )}
 
-      {/* MODAL AGREGAR CATEGORÍA - MEJORADO */}
-{mostrarModalCategoria && (
-  <div className="modal-simple">
-    <div className="modal-content-simple">
-      <h3>➕ NUEVA CATEGORÍA PERSONALIZADA</h3>
-      
-      <div className="modal-scroll-area">
-        <div className="modal-section">
-          <h4>📛 Nombre de la categoría</h4>
-          <input 
-            type="text" 
-            placeholder="Ej: PELÍCULAS MEXICANAS"
-            value={nuevaCategoria.nombre}
-            onChange={(e) => setNuevaCategoria({...nuevaCategoria, nombre: e.target.value})}
-          />
-        </div>
-        
-        <div className="modal-section">
-          <h4>📋 Preguntas agregadas</h4>
-          <div className="preguntas-list">
-            {nuevaCategoria.preguntas.length === 0 ? (
-              <div className="empty">No hay preguntas aún. Agrega tu primera pregunta 👇</div>
-            ) : (
-              nuevaCategoria.preguntas.map((p, i) => (
-                <div key={i} className="pregunta-preview">
-                  <div className="pregunta-info">
-                    <strong>{i + 1}.</strong> {p.texto}
-                  </div>
-                  <span className="pregunta-badge">{p.respuestas.length} respuestas</span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-        
-        <div className="modal-section">
-          <h4>➕ Agregar nueva pregunta</h4>
-          <input 
-            type="text" 
-            placeholder="¿Cuál es la película mexicana más famosa?"
-            value={nuevaPregunta.texto}
-            onChange={(e) => setNuevaPregunta({...nuevaPregunta, texto: e.target.value})}
-          />
-          
-          <h5>📝 Respuestas de la encuesta (5 opciones)</h5>
-          <div className="respuestas-grupo">
-            {nuevaPregunta.respuestas.map((resp, idx) => (
-              <div key={idx} className="respuesta-input-group">
-                <span className="resp-num">{idx + 1}</span>
+      {/* MODAL AGREGAR CATEGORÍA */}
+      {mostrarModalCategoria && (
+        <div className="modal-simple">
+          <div className="modal-content-simple">
+            <h3>➕ NUEVA CATEGORÍA PERSONALIZADA</h3>
+            
+            <div className="modal-scroll-area">
+              <div className="modal-section">
+                <h4>📛 Nombre de la categoría</h4>
                 <input 
                   type="text" 
-                  placeholder={`Respuesta ${idx + 1}`}
-                  value={resp.texto}
-                  onChange={(e) => actualizarRespuesta(idx, 'texto', e.target.value)}
-                />
-                <input 
-                  type="number" 
-                  placeholder="%"
-                  value={resp.puntos || ''}
-                  onChange={(e) => actualizarRespuesta(idx, 'puntos', e.target.value)}
+                  placeholder="Ej: PELÍCULAS FAVORITAS"
+                  value={nuevaCategoria.nombre}
+                  onChange={(e) => setNuevaCategoria({...nuevaCategoria, nombre: e.target.value})}
                 />
               </div>
-            ))}
+              
+              <div className="modal-section">
+                <h4>📋 Preguntas agregadas</h4>
+                <div className="preguntas-list">
+                  {nuevaCategoria.preguntas.length === 0 ? (
+                    <div className="empty">No hay preguntas aún. Agrega tu primera pregunta 👇</div>
+                  ) : (
+                    nuevaCategoria.preguntas.map((p, i) => (
+                      <div key={i} className="pregunta-preview">
+                        <div className="pregunta-info">
+                          <strong>{i + 1}.</strong> {p.texto}
+                        </div>
+                        <span className="pregunta-badge">{p.respuestas.length} respuestas</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+              
+              <div className="modal-section">
+                <h4>➕ Agregar nueva pregunta</h4>
+                <input 
+                  type="text" 
+                  placeholder="¿Cuál es tu película favorita?"
+                  value={nuevaPregunta.texto}
+                  onChange={(e) => setNuevaPregunta({...nuevaPregunta, texto: e.target.value})}
+                />
+                
+                <h5>📝 Respuestas (5 opciones)</h5>
+                <div className="respuestas-grupo">
+                  {nuevaPregunta.respuestas.map((resp, idx) => (
+                    <div key={idx} className="respuesta-input-group">
+                      <span className="resp-num">{idx + 1}</span>
+                      <input 
+                        type="text" 
+                        placeholder={`Respuesta ${idx + 1}`}
+                        value={resp.texto}
+                        onChange={(e) => actualizarRespuesta(idx, 'texto', e.target.value)}
+                      />
+                      <input 
+                        type="number" 
+                        placeholder="%"
+                        value={resp.puntos || ''}
+                        onChange={(e) => actualizarRespuesta(idx, 'puntos', e.target.value)}
+                      />
+                    </div>
+                  ))}
+                </div>
+                
+                <button 
+                  className="btn-agregar-pregunta" 
+                  onClick={agregarPregunta}
+                  disabled={!isPreguntaCompleta()}
+                  style={{ opacity: !isPreguntaCompleta() ? 0.5 : 1 }}
+                >
+                  ➕ Agregar esta pregunta
+                </button>
+              </div>
+            </div>
+            
+            <div className="modal-botones">
+              <button className="guardar" onClick={guardarCategoria}>
+                💾 Guardar Categoría
+              </button>
+              <button className="cancelar" onClick={() => setMostrarModalCategoria(false)}>
+                ❌ Cancelar
+              </button>
+            </div>
           </div>
-          
-          <button 
-            className="btn-agregar-pregunta" 
-            onClick={agregarPregunta}
-            disabled={!isPreguntaCompleta()}
-            style={{ opacity: !isPreguntaCompleta() ? 0.5 : 1 }}
-          >
-            ➕ Agregar esta pregunta
-          </button>
         </div>
-      </div>
-      
-      <div className="modal-botones">
-        <button className="guardar" onClick={guardarCategoria}>
-          💾 Guardar Categoría
-        </button>
-        <button className="cancelar" onClick={() => setMostrarModalCategoria(false)}>
-          ❌ Cancelar
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+      )}
     </div>
   );
 };

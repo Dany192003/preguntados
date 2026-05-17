@@ -4,21 +4,14 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 
 const app = express();
-
-// Configurar CORS para producción
-app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
-  methods: ["GET", "POST"],
-  credentials: true
-}));
+app.use(cors());
 app.use(express.json());
 
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || '*',
-    methods: ["GET", "POST"],
-    credentials: true
+    origin: "*",
+    methods: ["GET", "POST"]
   }
 });
 
@@ -26,8 +19,6 @@ const io = socketIo(server, {
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: Date.now() });
 });
-
-// Categorías predeterminadas
 
 // Categorías predeterminadas - Edición Día de la Madre
 const CATEGORIAS_PREDETERMINADAS = [
@@ -178,13 +169,18 @@ function crearEstadoInicial(salaId) {
     puntajes: { equipo1: 0, equipo2: 0 },
     puntosEnJuego: 0,
     preguntaActual: {
-      texto: "Selecciona una categoría y presiona INICIAR",
+      texto: "Selecciona categorías y presiona INICIAR",
       respuestas: []
     },
     strikes: 0,
     mensajeJuego: "Bienvenidos al programa",
     ronda: 1,
-    categorias: JSON.parse(JSON.stringify(CATEGORIAS_PREDETERMINADAS))
+    categorias: JSON.parse(JSON.stringify(CATEGORIAS_PREDETERMINADAS)),
+    // Nuevas propiedades para rondas múltiples
+    categoriasSeleccionadasRonda: [],
+    rondaActualCategoria: 0,
+    categoriaActual: null,
+    juegoIniciado: false
   };
 }
 
@@ -212,10 +208,11 @@ io.on('connection', (socket) => {
       sala.clients.push(socket.id);
     }
     
-    console.log(`📺 ${tipo} conectado a sala ${salaId} (${sala.clients.length} clientes)`);
+    console.log(`📺 ${tipo} conectado a sala ${salaId}`);
     socket.emit('estado-inicial', sala.gameState);
   });
   
+  // CONFIGURAR EQUIPOS
   socket.on('configurar-equipos', ({ salaId, data }) => {
     const sala = salas.get(salaId);
     if (sala) {
@@ -225,6 +222,125 @@ io.on('connection', (socket) => {
     }
   });
   
+  // SELECCIONAR CATEGORÍAS PARA LA RONDA
+  socket.on('seleccionar-categorias-ronda', ({ salaId, categoriasIds }) => {
+    const sala = salas.get(salaId);
+    if (sala) {
+      const categoriasSeleccionadas = sala.gameState.categorias.filter(c => 
+        categoriasIds.includes(c.id)
+      );
+      sala.gameState.categoriasSeleccionadasRonda = categoriasSeleccionadas;
+      sala.gameState.rondaActualCategoria = 0;
+      console.log(`📢 Sala ${salaId}: Categorías seleccionadas: ${categoriasSeleccionadas.map(c => c.nombre).join(', ')}`);
+      io.to(salaId).emit('estado-actualizado', sala.gameState);
+    }
+  });
+  
+  // INICIAR JUEGO CON CATEGORÍAS SELECCIONADAS
+  socket.on('iniciar-juego-ronda', (salaId) => {
+    const sala = salas.get(salaId);
+    if (sala && sala.gameState.categoriasSeleccionadasRonda.length > 0) {
+      sala.gameState.juegoIniciado = true;
+      sala.gameState.rondaActualCategoria = 0;
+      sala.gameState.preguntaActualIndex = 0;
+      cargarPrimeraPregunta(sala, salaId);
+    }
+  });
+  
+  function cargarPrimeraPregunta(sala, salaId) {
+    if (sala.gameState.categoriasSeleccionadasRonda.length === 0) return;
+    
+    const primeraCategoria = sala.gameState.categoriasSeleccionadasRonda[0];
+    sala.gameState.categoriaActual = primeraCategoria;
+    
+    if (primeraCategoria.preguntas && primeraCategoria.preguntas.length > 0) {
+      const primeraPregunta = primeraCategoria.preguntas[0];
+      sala.gameState.preguntaActual = {
+        texto: primeraPregunta.texto,
+        respuestas: primeraPregunta.respuestas.map(r => ({
+          texto: r.texto,
+          puntos: r.puntos,
+          revelada: false,
+          acertada: false
+        }))
+      };
+      sala.gameState.mensajeJuego = `🎮 Ronda iniciada con ${sala.gameState.categoriasSeleccionadasRonda.length} categorías. Categoría 1: ${primeraCategoria.nombre}`;
+      io.to(salaId).emit('estado-actualizado', sala.gameState);
+    }
+  }
+  
+  // SIGUIENTE PREGUNTA DENTRO DE LA MISMA CATEGORÍA
+  socket.on('siguiente-pregunta-categoria', ({ salaId }) => {
+    const sala = salas.get(salaId);
+    if (sala && sala.gameState.categoriaActual) {
+      const preguntas = sala.gameState.categoriaActual.preguntas;
+      const indiceActual = sala.gameState.preguntaActualIndex || 0;
+      
+      if (indiceActual + 1 < preguntas.length) {
+        // Siguiente pregunta de la misma categoría
+        sala.gameState.preguntaActualIndex = indiceActual + 1;
+        const siguientePregunta = preguntas[indiceActual + 1];
+        sala.gameState.preguntaActual = {
+          texto: siguientePregunta.texto,
+          respuestas: siguientePregunta.respuestas.map(r => ({
+            texto: r.texto,
+            puntos: r.puntos,
+            revelada: false,
+            acertada: false
+          }))
+        };
+        sala.gameState.faseJuego = 'esperando';
+        sala.gameState.equipoActivo = null;
+        sala.gameState.strikes = 0;
+        sala.gameState.puntosEnJuego = 0;
+        sala.gameState.mensajeJuego = `📢 Nueva pregunta de la categoría ${sala.gameState.categoriaActual.nombre}`;
+        io.to(salaId).emit('estado-actualizado', sala.gameState);
+      } else {
+        // Cambiar a la siguiente categoría
+        socket.emit('siguiente-categoria', salaId);
+      }
+    }
+  });
+  
+  // SIGUIENTE CATEGORÍA
+  socket.on('siguiente-categoria', (salaId) => {
+    const sala = salas.get(salaId);
+    if (sala && sala.gameState.categoriasSeleccionadasRonda.length > 0) {
+      const nuevoIndice = sala.gameState.rondaActualCategoria + 1;
+      
+      if (nuevoIndice < sala.gameState.categoriasSeleccionadasRonda.length) {
+        sala.gameState.rondaActualCategoria = nuevoIndice;
+        sala.gameState.categoriaActual = sala.gameState.categoriasSeleccionadasRonda[nuevoIndice];
+        sala.gameState.preguntaActualIndex = 0;
+        
+        const primeraPregunta = sala.gameState.categoriaActual.preguntas[0];
+        sala.gameState.preguntaActual = {
+          texto: primeraPregunta.texto,
+          respuestas: primeraPregunta.respuestas.map(r => ({
+            texto: r.texto,
+            puntos: r.puntos,
+            revelada: false,
+            acertada: false
+          }))
+        };
+        sala.gameState.faseJuego = 'esperando';
+        sala.gameState.equipoActivo = null;
+        sala.gameState.strikes = 0;
+        sala.gameState.puntosEnJuego = 0;
+        sala.gameState.mensajeJuego = `🎯 Nueva categoría: ${sala.gameState.categoriaActual.nombre} (${nuevoIndice + 1}/${sala.gameState.categoriasSeleccionadasRonda.length})`;
+        io.to(salaId).emit('estado-actualizado', sala.gameState);
+      } else {
+        // Terminar ronda
+        sala.gameState.juegoIniciado = false;
+        sala.gameState.mensajeJuego = `🏆 ¡Ronda completada! Puntaje final: ${sala.gameState.equipo1Nombre}: ${sala.gameState.puntajes.equipo1} - ${sala.gameState.equipo2Nombre}: ${sala.gameState.puntajes.equipo2}`;
+        sala.gameState.categoriasSeleccionadasRonda = [];
+        sala.gameState.categoriaActual = null;
+        io.to(salaId).emit('estado-actualizado', sala.gameState);
+      }
+    }
+  });
+  
+  // AGREGAR CATEGORÍA PERSONALIZADA
   socket.on('agregar-categoria', ({ salaId, categoria }) => {
     const sala = salas.get(salaId);
     if (sala) {
@@ -236,10 +352,10 @@ io.on('connection', (socket) => {
       };
       sala.gameState.categorias.push(nuevaCategoria);
       io.to(salaId).emit('estado-actualizado', sala.gameState);
-      console.log(`📌 Sala ${salaId}: Categoría personalizada agregada - ${categoria.nombre}`);
     }
   });
   
+  // CAMBIAR FASE
   socket.on('cambiar-fase', ({ salaId, fase }) => {
     const sala = salas.get(salaId);
     if (sala) {
@@ -248,6 +364,7 @@ io.on('connection', (socket) => {
     }
   });
   
+  // GANA MANO A MANO
   socket.on('gana-manoamano', ({ salaId, equipo }) => {
     const sala = salas.get(salaId);
     if (sala) {
@@ -259,6 +376,7 @@ io.on('connection', (socket) => {
     }
   });
   
+  // REVELAR RESPUESTA
   socket.on('revelar-respuesta', ({ salaId, index }) => {
     const sala = salas.get(salaId);
     if (sala && sala.gameState.preguntaActual.respuestas[index]) {
@@ -267,6 +385,7 @@ io.on('connection', (socket) => {
     }
   });
   
+  // ACERTAR RESPUESTA
   socket.on('acertar-respuesta', ({ salaId, index }) => {
     const sala = salas.get(salaId);
     if (sala && sala.gameState.preguntaActual.respuestas[index] &&
@@ -280,6 +399,7 @@ io.on('connection', (socket) => {
     }
   });
   
+  // SUMAR PUNTOS
   socket.on('sumar-puntos', ({ salaId, equipo, puntos }) => {
     const sala = salas.get(salaId);
     if (sala) {
@@ -288,6 +408,7 @@ io.on('connection', (socket) => {
     }
   });
   
+  // REGISTRAR FALLO
   socket.on('registrar-fallo', (salaId) => {
     const sala = salas.get(salaId);
     if (sala) {
@@ -302,6 +423,7 @@ io.on('connection', (socket) => {
     }
   });
   
+  // ROBAR PUNTOS
   socket.on('intentar-robo-con-equipo', ({ salaId, equipoOrigen }) => {
     const sala = salas.get(salaId);
     if (sala) {
@@ -323,36 +445,7 @@ io.on('connection', (socket) => {
     }
   });
   
-  socket.on('siguiente-pregunta', ({ salaId, nuevaPregunta }) => {
-    const sala = salas.get(salaId);
-    if (sala && nuevaPregunta) {
-      sala.gameState.preguntaActual = {
-        texto: nuevaPregunta.texto,
-        respuestas: nuevaPregunta.respuestas.map(r => ({
-          texto: r.texto,
-          puntos: r.puntos,
-          revelada: false,
-          acertada: false
-        }))
-      };
-      sala.gameState.ronda++;
-      sala.gameState.faseJuego = 'esperando';
-      sala.gameState.equipoActivo = null;
-      sala.gameState.strikes = 0;
-      sala.gameState.puntosEnJuego = 0;
-      sala.gameState.mensajeJuego = "Nueva pregunta. Selecciona quién empieza";
-      io.to(salaId).emit('estado-actualizado', sala.gameState);
-    }
-  });
-  
-  socket.on('enviar-mensaje', ({ salaId, mensaje }) => {
-    const sala = salas.get(salaId);
-    if (sala) {
-      sala.gameState.mensajeJuego = mensaje;
-      io.to(salaId).emit('estado-actualizado', sala.gameState);
-    }
-  });
-  
+  // RESET STRIKES
   socket.on('reset-strikes', (salaId) => {
     const sala = salas.get(salaId);
     if (sala) {
@@ -361,6 +454,16 @@ io.on('connection', (socket) => {
     }
   });
   
+  // ENVIAR MENSAJE
+  socket.on('enviar-mensaje', ({ salaId, mensaje }) => {
+    const sala = salas.get(salaId);
+    if (sala) {
+      sala.gameState.mensajeJuego = mensaje;
+      io.to(salaId).emit('estado-actualizado', sala.gameState);
+    }
+  });
+  
+  // REINICIAR JUEGO
   socket.on('reiniciar-juego', (salaId) => {
     const sala = salas.get(salaId);
     if (sala) {
@@ -369,6 +472,7 @@ io.on('connection', (socket) => {
     }
   });
   
+  // CERRAR SALA
   socket.on('cerrar-sala', (salaId) => {
     const sala = salas.get(salaId);
     if (sala) {
@@ -395,4 +499,5 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+  console.log(`📋 Categorías predeterminadas: ${CATEGORIAS_PREDETERMINADAS.length}`);
 });
