@@ -19,11 +19,11 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: Date.now() });
 });
 
-// Categorías predeterminadas - Edición Día de la Madre
+// UNA SOLA CATEGORÍA CON TODAS LAS PREGUNTAS DEL DÍA DE LA MADRE
 const CATEGORIAS_PREDETERMINADAS = [
   {
     id: 1,
-    nombre: "🍼 PARA CALMAR A UN BEBÉ",
+    nombre: "🎉 ESPECIAL DÍA DE LA MADRE",
     tipo: "default",
     preguntas: [
       {
@@ -35,14 +35,7 @@ const CATEGORIAS_PREDETERMINADAS = [
           { texto: "Cambiarle el pañal", puntos: 10 },
           { texto: "Salir a caminar con él", puntos: 5 }
         ]
-      }
-    ]
-  },
-  {
-    id: 2,
-    nombre: "🗣️ FRASES TÍPICAS DE MAMÁ",
-    tipo: "default",
-    preguntas: [
+      },
       {
         texto: "¿Qué frase típica dices como mamá?",
         respuestas: [
@@ -52,14 +45,7 @@ const CATEGORIAS_PREDETERMINADAS = [
           { texto: "Le voy a decir a tu papá", puntos: 12 },
           { texto: "No te mandas solo", puntos: 8 }
         ]
-      }
-    ]
-  },
-  {
-    id: 3,
-    nombre: "🎁 REGALOS POPULARES PARA MAMÁ",
-    tipo: "default",
-    preguntas: [
+      },
       {
         texto: "¿Qué regalo le gusta más a una mamá?",
         respuestas: [
@@ -69,14 +55,7 @@ const CATEGORIAS_PREDETERMINADAS = [
           { texto: "Flores", puntos: 15 },
           { texto: "Una tarjeta hecha a mano", puntos: 10 }
         ]
-      }
-    ]
-  },
-  {
-    id: 4,
-    nombre: "👋 CON QUÉ PEGAS A TUS HIJOS",
-    tipo: "default",
-    preguntas: [
+      },
       {
         texto: "¿Con qué le pegas a tus hijos?",
         respuestas: [
@@ -86,14 +65,7 @@ const CATEGORIAS_PREDETERMINADAS = [
           { texto: "Una rama", puntos: 10 },
           { texto: "Una escoba", puntos: 5 }
         ]
-      }
-    ]
-  },
-  {
-    id: 5,
-    nombre: "🏫 RUTINA ANTES DE LA ESCUELA",
-    tipo: "default",
-    preguntas: [
+      },
       {
         texto: "¿Qué haces con tus hijos antes de llevarlos a la escuela?",
         respuestas: [
@@ -103,14 +75,7 @@ const CATEGORIAS_PREDETERMINADAS = [
           { texto: "Peinarlos aunque no quieran", puntos: 15 },
           { texto: "Revisar que lleven todo", puntos: 10 }
         ]
-      }
-    ]
-  },
-  {
-    id: 6,
-    nombre: "☕ MARCAS DE CAFÉ",
-    tipo: "default",
-    preguntas: [
+      },
       {
         texto: "¿Qué café prefieres?",
         respuestas: [
@@ -119,14 +84,7 @@ const CATEGORIAS_PREDETERMINADAS = [
           { texto: "Nescafé", puntos: 20 },
           { texto: "Inscafé", puntos: 15 }
         ]
-      }
-    ]
-  },
-  {
-    id: 7,
-    nombre: "🧹 QUÉ TE MOLESTA QUE NO HAGAN",
-    tipo: "default",
-    preguntas: [
+      },
       {
         texto: "¿Qué es lo que más te molesta que tus hijos NO hagan?",
         respuestas: [
@@ -136,14 +94,7 @@ const CATEGORIAS_PREDETERMINADAS = [
           { texto: "Bañarse sin que se lo digas", puntos: 12 },
           { texto: "No dejar el teléfono", puntos: 8 }
         ]
-      }
-    ]
-  },
-  {
-    id: 8,
-    nombre: "😅 MENTIRAS TÍPICAS DE HIJOS",
-    tipo: "default",
-    preguntas: [
+      },
       {
         texto: "¿Cuál es la mentira más común que te dicen tus hijos?",
         respuestas: [
@@ -152,6 +103,126 @@ const CATEGORIAS_PREDETERMINADAS = [
           { texto: "Ya me bañé", puntos: 15 },
           { texto: "Ya recogí mi cuarto", puntos: 12 },
           { texto: "Me duele la panza para no ir a la escuela", puntos: 8 }
+        ]
+      },
+      {
+        texto: "¿Qué marca de chancla es la más efectiva?",
+        respuestas: [
+          { texto: "Las del mercado de hule grueso", puntos: 40 },
+          { texto: "Las de marca Reebok/Nike", puntos: 25 },
+          { texto: "Las de la tiendita de la esquina", puntos: 18 },
+          { texto: "Las de cuero de la abuela", puntos: 10 },
+          { texto: "Las de los chinos", puntos: 7 }
+        ]
+      },
+      {
+        texto: "¿Qué hace tu mamá cuando te portas mal?",
+        respuestas: [
+          { texto: "Te regaña fuerte", puntos: 35 },
+          { texto: "Te quita el celular", puntos: 25 },
+          { texto: "Te pone a hacer oficio", puntos: 20 },
+          { texto: "Te deja sin salida", puntos: 12 },
+          { texto: "Le dice a tu papá", puntos: 8 }
+        ]
+      },
+      {
+        texto: "¿Qué comida te hace tu mamá cuando estás triste?",
+        respuestas: [
+          { texto: "Sopa de fideo", puntos: 30 },
+          { texto: "Arroz con pollo", puntos: 25 },
+          { texto: "Pozole", puntos: 20 },
+          { texto: "Tamales", puntos: 15 },
+          { texto: "Un pastel", puntos: 10 }
+        ]
+      },
+      {
+        texto: "¿Qué es lo que más extrañas de tu mamá cuando no está?",
+        respuestas: [
+          { texto: "Su comida", puntos: 35 },
+          { texto: "Sus consejos", puntos: 25 },
+          { texto: "Sus abrazos", puntos: 20 },
+          { texto: "Que me consienta", puntos: 12 },
+          { texto: "Que me pele con ella", puntos: 8 }
+        ]
+      },
+      {
+        texto: "¿Qué hace tu mamá para consentirte?",
+        respuestas: [
+          { texto: "Te cocina lo que te gusta", puntos: 35 },
+          { texto: "Te da dinero extra", puntos: 25 },
+          { texto: "Te compra ropa", puntos: 20 },
+          { texto: "Te deja dormir hasta tarde", puntos: 12 },
+          { texto: "Te da un abrazo", puntos: 8 }
+        ]
+      },
+      {
+        texto: "¿Qué odia hacer tu mamá?",
+        respuestas: [
+          { texto: "Planchar ropa", puntos: 35 },
+          { texto: "Lavar los trastes", puntos: 25 },
+          { texto: "Barrer y trapear", puntos: 20 },
+          { texto: "Hacer el super", puntos: 12 },
+          { texto: "Pagar cuentas", puntos: 8 }
+        ]
+      },
+      {
+        texto: "¿Qué es lo que más le gusta ver a tu mamá en la tele?",
+        respuestas: [
+          { texto: "Telenovelas", puntos: 40 },
+          { texto: "Noticias", puntos: 25 },
+          { texto: "Programas de chisme", puntos: 15 },
+          { texto: "Películas de comedia", puntos: 12 },
+          { texto: "Concursos", puntos: 8 }
+        ]
+      },
+      {
+        texto: "¿Qué hace tu mamá cuando está feliz?",
+        respuestas: [
+          { texto: "Canta", puntos: 35 },
+          { texto: "Baila", puntos: 25 },
+          { texto: "Cocina algo especial", puntos: 20 },
+          { texto: "Nos abraza", puntos: 12 },
+          { texto: "Nos da dinero", puntos: 8 }
+        ]
+      },
+      {
+        texto: "¿Qué hace tu mamá cuando está enojada?",
+        respuestas: [
+          { texto: "No nos habla", puntos: 40 },
+          { texto: "Nos regaña", puntos: 25 },
+          { texto: "Tira la chancla", puntos: 15 },
+          { texto: "Se encierra en su cuarto", puntos: 12 },
+          { texto: "Nos quita el celular", puntos: 8 }
+        ]
+      },
+      {
+        texto: "¿Qué es lo que más le gusta comprar a tu mamá?",
+        respuestas: [
+          { texto: "Zapatos", puntos: 35 },
+          { texto: "Ropa", puntos: 25 },
+          { texto: "Crema o maquillaje", puntos: 20 },
+          { texto: "Comida", puntos: 12 },
+          { texto: "Cosas para la casa", puntos: 8 }
+        ]
+      },
+      {
+        texto: "¿Qué es lo que más le gusta presumir a tu mamá?",
+        respuestas: [
+          { texto: "Tus logros", puntos: 45 },
+          { texto: "Su casa", puntos: 20 },
+          { texto: "Su comida", puntos: 15 },
+          { texto: "Sus hijos", puntos: 12 },
+          { texto: "Su ropa nueva", puntos: 8 }
+        ]
+      },
+      {
+        texto: "¿Qué es lo que más le duele a una mamá?",
+        respuestas: [
+          { texto: "Que le falten el respeto", puntos: 40 },
+          { texto: "Que se porten mal sus hijos", puntos: 25 },
+          { texto: "Que no le hagan caso", puntos: 18 },
+          { texto: "Que no le ayuden", puntos: 10 },
+          { texto: "Que lleguen tarde", puntos: 7 }
         ]
       }
     ]
@@ -168,7 +239,7 @@ function crearEstadoInicial(salaId) {
     puntajes: { equipo1: 0, equipo2: 0 },
     puntosEnJuego: 0,
     preguntaActual: {
-      texto: "Selecciona una categoría y presiona INICIAR",
+      texto: "Selecciona la categoría y presiona INICIAR",
       respuestas: []
     },
     strikes: 0,
@@ -384,4 +455,5 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+  console.log(`📋 Categorías predeterminadas: ${CATEGORIAS_PREDETERMINADAS.length} categoría con ${CATEGORIAS_PREDETERMINADAS[0].preguntas.length} preguntas`);
 });
