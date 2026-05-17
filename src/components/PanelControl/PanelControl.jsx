@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } react from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import './PanelControl.css';
 
@@ -15,19 +15,16 @@ const PanelControl = () => {
     equipoActivo: null,
     puntajes: { equipo1: 0, equipo2: 0 },
     puntosEnJuego: 0,
-    preguntaActual: { texto: "Selecciona categorías y presiona INICIAR", respuestas: [] },
+    preguntaActual: { texto: "Selecciona categoría y presiona INICIAR", respuestas: [] },
     strikes: 0,
     mensajeJuego: "Bienvenido",
     ronda: 1,
-    categorias: [],
-    categoriasSeleccionadasRonda: [],
-    juegoIniciado: false,
-    categoriaActual: null,
-    rondaActualCategoria: 0
+    categorias: []
   });
   
-  // Estado local para las categorías seleccionadas
-  const [categoriasSeleccionadasLocal, setCategoriasSeleccionadasLocal] = useState([]);
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(null);
+  const [preguntaIndex, setPreguntaIndex] = useState(0);
+  const [juegoActivo, setJuegoActivo] = useState(false);
   const [mostrarModalCategoria, setMostrarModalCategoria] = useState(false);
   const [editandoEquipo, setEditandoEquipo] = useState(null);
   const [nombreTemp, setNombreTemp] = useState("");
@@ -63,10 +60,6 @@ const PanelControl = () => {
 
     newSocket.on('estado-actualizado', (estado) => {
       setGameState(estado);
-      // Si el juego se inició, limpiar selección local
-      if (estado.juegoIniciado) {
-        setCategoriasSeleccionadasLocal([]);
-      }
     });
 
     return () => {
@@ -74,41 +67,49 @@ const PanelControl = () => {
     };
   }, [salaId]);
 
-  // Función para seleccionar/deseleccionar categoría
-  const toggleCategoria = (categoriaId) => {
-    if (categoriasSeleccionadasLocal.includes(categoriaId)) {
-      setCategoriasSeleccionadasLocal(categoriasSeleccionadasLocal.filter(id => id !== categoriaId));
-    } else {
-      setCategoriasSeleccionadasLocal([...categoriasSeleccionadasLocal, categoriaId]);
+  const iniciarJuego = () => {
+    if (!categoriaSeleccionada) {
+      alert('Selecciona una categoría');
+      return;
+    }
+    setJuegoActivo(true);
+    setPreguntaIndex(0);
+    cargarPregunta(0);
+    if (socket) {
+      socket.emit('enviar-mensaje', { salaId, mensaje: `🎮 Juego iniciado - ${categoriaSeleccionada.nombre}` });
     }
   };
 
-  // Función para iniciar el juego
-  const iniciarJuego = () => {
-    if (categoriasSeleccionadasLocal.length === 0) {
-      alert('Selecciona al menos una categoría');
-      return;
-    }
-    
-    if (socket) {
-      // Primero enviar las categorías seleccionadas al servidor
-      socket.emit('seleccionar-categorias-ronda', { 
-        salaId, 
-        categoriasIds: categoriasSeleccionadasLocal 
-      });
-      
-      // Luego iniciar el juego
-      socket.emit('iniciar-juego-ronda', salaId);
-      socket.emit('enviar-mensaje', { 
-        salaId, 
-        mensaje: `🎮 Juego iniciado con ${categoriasSeleccionadasLocal.length} categorías` 
+  const cargarPregunta = (index) => {
+    const pregunta = categoriaSeleccionada.preguntas[index];
+    if (socket && pregunta) {
+      socket.emit('siguiente-pregunta', {
+        salaId,
+        nuevaPregunta: {
+          texto: pregunta.texto,
+          respuestas: pregunta.respuestas.map(r => ({ 
+            texto: r.texto, 
+            puntos: r.puntos, 
+            revelada: false, 
+            acertada: false 
+          }))
+        }
       });
     }
   };
 
   const siguientePregunta = () => {
-    if (socket) {
-      socket.emit('siguiente-pregunta-categoria', salaId);
+    if (preguntaIndex + 1 < categoriaSeleccionada.preguntas.length) {
+      setPreguntaIndex(preguntaIndex + 1);
+      cargarPregunta(preguntaIndex + 1);
+      if (socket) {
+        socket.emit('cambiar-fase', { salaId, fase: 'manoAmazo' });
+        socket.emit('reset-strikes', salaId);
+      }
+    } else {
+      alert('🎉 ¡Categoría completada!');
+      setJuegoActivo(false);
+      setCategoriaSeleccionada(null);
     }
   };
 
@@ -181,7 +182,9 @@ const PanelControl = () => {
 
   const reiniciarPartida = () => {
     if (socket) socket.emit('reiniciar-juego', salaId);
-    setCategoriasSeleccionadasLocal([]);
+    setJuegoActivo(false);
+    setCategoriaSeleccionada(null);
+    setPreguntaIndex(0);
     setMostrarConfirmacionReinicio(false);
   };
 
@@ -360,74 +363,40 @@ const PanelControl = () => {
         </div>
       )}
 
-      {/* SELECCIÓN DE CATEGORÍAS - SIEMPRE VISIBLE CUANDO EL JUEGO NO ESTÁ ACTIVO */}
-      {!gameState.juegoIniciado && (
-        <div className="seleccion-categoria-multiple">
-          <h3>📂 SELECCIONA CATEGORÍAS PARA LA RONDA</h3>
-          <p className="info-multiple">Selecciona 1 o más categorías para jugar en esta ronda</p>
-          <div className="categorias-grid-multiple">
-            {gameState.categorias && gameState.categorias.map(cat => (
-              <div
+      {/* SELECCIÓN DE CATEGORÍA - UNA SOLA */}
+      <div className="seleccion-categoria">
+        <h3>📂 SELECCIONAR CATEGORÍA</h3>
+        <div className="categorias-simples">
+          {gameState.categorias && gameState.categorias.length > 0 ? (
+            gameState.categorias.map(cat => (
+              <button
                 key={cat.id}
-                className={`categoria-card-multiple ${categoriasSeleccionadasLocal.includes(cat.id) ? 'seleccionada' : ''}`}
-                onClick={() => toggleCategoria(cat.id)}
+                className={`cat-btn ${categoriaSeleccionada?.id === cat.id ? 'active' : ''}`}
+                onClick={() => setCategoriaSeleccionada(cat)}
               >
-                <div className="categoria-checkbox">
-                  {categoriasSeleccionadasLocal.includes(cat.id) ? '✅' : '⬜'}
-                </div>
-                <div className="categoria-info">
-                  <div className="categoria-nombre-multiple">{cat.nombre}</div>
-                  <div className="categoria-preguntas-count">{cat.preguntas.length} preguntas</div>
-                </div>
-              </div>
-            ))}
-            <div className="categoria-card-multiple agregar" onClick={() => setMostrarModalCategoria(true)}>
-              <div className="categoria-checkbox">➕</div>
-              <div className="categoria-info">
-                <div className="categoria-nombre-multiple">AGREGAR CATEGORÍA</div>
-                <div className="categoria-preguntas-count">Personalizada</div>
-              </div>
-            </div>
-          </div>
-          
-          <button 
-            className="btn-iniciar-grande" 
-            onClick={iniciarJuego}
-            disabled={categoriasSeleccionadasLocal.length === 0}
-            style={{ 
-              opacity: categoriasSeleccionadasLocal.length === 0 ? 0.5 : 1,
-              cursor: categoriasSeleccionadasLocal.length === 0 ? 'not-allowed' : 'pointer'
-            }}
-          >
-            🟢 INICIAR RONDA ({categoriasSeleccionadasLocal.length} categorías seleccionadas)
+                {cat.nombre}
+                {cat.tipo === 'custom' && <span className="custom-badge"> 📌</span>}
+              </button>
+            ))
+          ) : (
+            <div className="no-categorias">Cargando categorías...</div>
+          )}
+          <button className="cat-btn agregar" onClick={() => setMostrarModalCategoria(true)}>
+            ➕ AGREGAR
           </button>
         </div>
+      </div>
+
+      {!juegoActivo && categoriaSeleccionada && (
+        <button className="btn-iniciar-grande" onClick={iniciarJuego}>
+          🟢 INICIAR PARTIDA CON {categoriaSeleccionada.nombre}
+        </button>
       )}
 
-      {/* JUEGO ACTIVO */}
-      {gameState.juegoIniciado && (
+      {juegoActivo && (
         <>
-          <div className="progreso-ronda">
-            <div className="categoria-actual-info">
-              <span className="categoria-actual-tag">📚 Categoría actual:</span>
-              <strong>{gameState.categoriaActual?.nombre || 'Cargando...'}</strong>
-            </div>
-            <div className="progreso-barras">
-              <div className="progreso-item">
-                <span>Progreso ronda:</span>
-                <div className="barra-progreso">
-                  <div 
-                    className="barra-fill" 
-                    style={{ width: `${((gameState.rondaActualCategoria + 1) / (gameState.categoriasSeleccionadasRonda?.length || 1)) * 100}%` }}
-                  ></div>
-                </div>
-                <span className="progreso-texto">{gameState.rondaActualCategoria + 1}/{gameState.categoriasSeleccionadasRonda?.length || 0} categorías</span>
-              </div>
-            </div>
-          </div>
-
           <div className="pregunta-simple">
-            <h3>📢 PREGUNTA</h3>
+            <h3>📢 PREGUNTA {preguntaIndex + 1}/{categoriaSeleccionada?.preguntas.length}</h3>
             <div className="texto-pregunta">{gameState.preguntaActual.texto}</div>
           </div>
 
